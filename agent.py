@@ -5,14 +5,6 @@ from GROUP_067.neural_nets import Actor, Critic
 from GROUP_067.memory import ReplayBuffer
 import pickle
 
-
-class CPU_Unpickler(pickle.Unpickler):
-    def find_class(self, module, name):
-        if module == 'torch.storage' and name == '_load_from_bytes':
-            return lambda b: torch.load(io.BytesIO(b), map_location='cpu')
-        else: return super().find_class(module, name)
-
-
 class Agent(object):
     """Agent class that handles the training of the networks and provides outputs as actions
     
@@ -49,15 +41,8 @@ class Agent(object):
     def load_weights(self, root_path):
         directory = root_path+'weights'
         filename = 'TD3'
-        if self.device == 'cpu':
-            act_weigths = CPU_Unpickler('%s/%s_actor.pth' % (directory, filename)).load()
-            crit_weigths = CPU_Unpickler('%s/%s_critic.pth' % (directory, filename)).load()
-            print(act_weigths)
-            self.actor.load_state_dict(act_weigths)
-            self.critic.load_state_dict(crit_weigths)
-        else:
-            self.actor.load_state_dict(torch.load('%s/%s_actor.pth' % (directory, filename)))
-            self.critic.load_state_dict(torch.load('%s/%s_critic.pth' % (directory, filename)))
+        self.actor.load_state_dict(torch.load('%s/%s_actor.pth' % (directory, filename)))
+        self.critic.load_state_dict(torch.load('%s/%s_critic.pth' % (directory, filename)))
 
     def save(self, filename='', directory=''):
             torch.save(self.actor.state_dict(), '%s/%s_actor.pth' % (directory, 'TD3_'+filename))
