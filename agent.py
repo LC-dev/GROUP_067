@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from neural_nets import Actor, Critic
-from memory import ReplayBuffer
+from GROUP_067.neural_nets import Actor, Critic
+from GROUP_067.memory import ReplayBuffer
 
 class Agent(object):
     """Agent class that handles the training of the networks and provides outputs as actions
