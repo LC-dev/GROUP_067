@@ -17,7 +17,7 @@ class Agent(object):
     
     """
 
-    def __init__(self, env_specs, max_action=1):
+    def __init__(self, env_specs, max_action=1, pretrained=False):
         self.env_specs = env_specs
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         state_dim = self.env_specs['observation_space'].shape[0]
@@ -37,6 +37,7 @@ class Agent(object):
         self.max_action = max_action
         self.buffer_start = 1000
         self.it = 0
+        self.pretrained = pretrained
 
     def load_weights(self, root_path):
         directory = root_path+'weights'
@@ -68,7 +69,7 @@ class Agent(object):
             action = (action + np.random.normal(0, noise, size=self.env_specs['action_space'].shape[0]))
 
         #exploratory start
-        if mode == 'train' and len(self.replay_buffer.storage) < self.buffer_start:
+        if mode == 'train' and not self.pretrained and len(self.replay_buffer.storage) < self.buffer_start:
             action = self.env_specs['action_space'].sample()
             
         return action.clip(-1, 1)
