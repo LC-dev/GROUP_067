@@ -52,6 +52,7 @@ class Agent(object):
         if self.device == 'cpu':
             act_weigths = CPU_Unpickler('%s/%s_actor.pth' % (directory, filename)).load()
             crit_weigths = CPU_Unpickler('%s/%s_critic.pth' % (directory, filename)).load()
+            print(act_weigths)
             self.actor.load_state_dict(act_weigths)
             self.critic.load_state_dict(crit_weigths)
         else:
