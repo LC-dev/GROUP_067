@@ -34,7 +34,7 @@ class Agent(object):
 
         self.replay_buffer = ReplayBuffer()
         self.max_action = max_action
-        self.buffer_start = 100
+        self.buffer_start = 1000
         self.it = 0
 
     def load_weights(self, root_path):
@@ -43,9 +43,9 @@ class Agent(object):
         self.actor.load_state_dict(torch.load('%s/%s_actor.pth' % (directory, filename)))
         self.critic.load_state_dict(torch.load('%s/%s_critic.pth' % (directory, filename)))
 
-    def save(self, filename, directory):
-        torch.save(self.actor.state_dict(), '%s/%s_actor.pth' % (directory, filename))
-        torch.save(self.critic.state_dict(), '%s/%s_critic.pth' % (directory, filename))
+    def save(self, filename='', directory=''):
+            torch.save(self.actor.state_dict(), '%s/%s_actor.pth' % (directory, 'TD3_'+filename))
+            torch.save(self.critic.state_dict(), '%s/%s_critic.pth' % (directory, 'TD3_'+filename))
 
     def act(self, curr_obs, mode='eval', noise=0.1):
         """Select an appropriate action from the agent policy
@@ -65,10 +65,14 @@ class Agent(object):
         #add noise
         if noise != 0 and mode == 'train': 
             action = (action + np.random.normal(0, noise, size=self.env_specs['action_space'].shape[0]))
+
+        #exploratory start
+        if mode == 'train' and len(self.replay_buffer.storage) < self.buffer_start:
+            action = self.env_specs['action_space'].sample()
             
         return action.clip(-1, 1)
 
-    def update(self, curr_obs, action, reward, next_obs, done, timestep, batch_size=128, discount=0.99, tau=0.005, policy_noise=0.2, noise_clip=0.5, policy_freq=2):
+    def update(self, curr_obs, action, reward, next_obs, done, timestep, batch_size=100, discount=0.99, tau=0.005, policy_noise=0.2, noise_clip=0.5, policy_freq=2):
         #iteration
         self.it += 1
         
