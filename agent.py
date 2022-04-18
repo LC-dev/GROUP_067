@@ -40,8 +40,12 @@ class Agent(object):
     def load_weights(self, root_path):
         directory = root_path+'weights'
         filename = 'TD3'
-        self.actor.load_state_dict(torch.load('%s/%s_actor.pth' % (directory, filename)))
-        self.critic.load_state_dict(torch.load('%s/%s_critic.pth' % (directory, filename)))
+        if self.device == "cuda:0":
+            self.actor.load_state_dict(torch.load('%s/%s_actor.pth' % (directory, filename)))
+            self.critic.load_state_dict(torch.load('%s/%s_critic.pth' % (directory, filename)))
+        else:
+            self.actor.load_state_dict(torch.load('%s/%s_actor.pth' % (directory, filename), map_location=torch.device('cpu')))
+            self.critic.load_state_dict(torch.load('%s/%s_critic.pth' % (directory, filename), map_location=torch.device('cpu')))
 
     def save(self, filename='', directory=''):
             torch.save(self.actor.state_dict(), '%s/%s_actor.pth' % (directory, 'TD3_'+filename))
