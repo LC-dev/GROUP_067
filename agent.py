@@ -3,7 +3,6 @@ import torch
 import torch.nn.functional as F
 from GROUP_067.neural_nets import Actor, Critic
 from GROUP_067.memory import ReplayBuffer
-import pickle
 
 class Agent(object):
     """Agent class that handles the training of the networks and provides outputs as actions
