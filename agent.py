@@ -1,19 +1,158 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from GROUP_067.neural_nets import Actor, Critic
-from GROUP_067.memory import ReplayBuffer
+import torch.nn as nn
+
+
+
+def hidden_init(layer):
+    fan_in = layer.weight.data.size()[0]
+    lim = 1. / np.sqrt(fan_in)
+    return (-lim, lim)
+
+class Actor(nn.Module):
+    """Initialize parameters and build model.
+        Args:
+            state_size (int): Dimension of each state
+            action_size (int): Dimension of each action
+            max_action (float): highest action to take
+            seed (int): Random seed
+            h1_units (int): Number of nodes in first hidden layer
+            h2_units (int): Number of nodes in second hidden layer
+            
+        Return:
+            action output of network with tanh activation
+    """
+    def __init__(self, state_dim, action_dim, max_action):
+        super(Actor, self).__init__()
+
+        self.l1 = nn.Linear(state_dim, 400)
+        self.l2 = nn.Linear(400, 300)
+        self.l3 = nn.Linear(300, action_dim)
+
+        self.max_action = max_action
+
+    def forward(self, x):
+        x = F.relu(self.l1(x))
+        x = F.relu(self.l2(x))
+        x = self.max_action * torch.tanh(self.l3(x)) 
+        return x
+
+
+class Critic(nn.Module):
+    """Initialize parameters and build model.
+        Args:
+            state_size (int): Dimension of each state
+            action_size (int): Dimension of each action
+            max_action (float): highest action to take
+            seed (int): Random seed
+            h1_units (int): Number of nodes in first hidden layer
+            h2_units (int): Number of nodes in second hidden layer
+            
+        Return:
+            value output of network 
+    """
+    
+    def __init__(self, state_dim, action_dim):
+        super(Critic, self).__init__()
+
+        # Q1 architecture
+        self.l1 = nn.Linear(state_dim + action_dim, 400)
+        self.l2 = nn.Linear(400, 300)
+        self.l3 = nn.Linear(300, 1)
+
+        # Q2 architecture
+        self.l4 = nn.Linear(state_dim + action_dim, 400)
+        self.l5 = nn.Linear(400, 300)
+        self.l6 = nn.Linear(300, 1)
+
+    def forward(self, x, u):
+        xu = torch.cat([x, u], 1)
+
+        x1 = F.relu(self.l1(xu))
+        x1 = F.relu(self.l2(x1))
+        x1 = self.l3(x1)
+
+        x2 = F.relu(self.l4(xu))
+        x2 = F.relu(self.l5(x2))
+        x2 = self.l6(x2)
+        return x1, x2
+
+    def Q1(self, x, u):
+        xu = torch.cat([x, u], 1)
+
+        x1 = F.relu(self.l1(xu))
+        x1 = F.relu(self.l2(x1))
+        x1 = self.l3(x1)
+        return x1
+
+
+
+
+class ReplayBuffer(object):
+    """Buffer to store tuples of experience replay"""
+    
+    def __init__(self, max_size=1000000):
+        """
+        Args:
+            max_size (int): total amount of tuples to store
+        """
+        
+        self.storage = []
+        self.max_size = max_size
+        self.ptr = 0
+
+    def add(self, data):
+        """Add experience tuples to buffer
+        
+        Args:
+            data (tuple): experience replay tuple
+        """
+        
+        if len(self.storage) == self.max_size:
+            self.storage[int(self.ptr)] = data
+            self.ptr = (self.ptr + 1) % self.max_size
+        else:
+            self.storage.append(data)
+
+    def sample(self, batch_size):
+        """Samples a random amount of experiences from buffer of batch size
+        
+        Args:
+            batch_size (int): size of sample
+        """
+        
+        #print(len(self.storage))
+        ind = np.random.randint(0, len(self.storage), size=batch_size)
+        states, actions, next_states, rewards, dones = [], [], [], [], []
+
+        for i in ind: 
+            s, a, s_, r, d = self.storage[i]
+            states.append(np.array(s, copy=False))
+            actions.append(np.array(a, copy=False))
+            next_states.append(np.array(s_, copy=False))
+            rewards.append(np.array(r, copy=False))
+            dones.append(np.array(d, copy=False))
+
+        return np.array(states), np.array(actions), np.array(next_states), np.array(rewards).reshape(-1, 1), np.array(dones).reshape(-1, 1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class Agent(object):
     """Agent class that handles the training of the networks and provides outputs as actions
-    
-        Args:
-            state_dim (int): state size
-            action_dim (int): action size
-            max_action (float): highest action to take
-            device (device): cuda or cpu to process tensors
-            env (env): gym environment to use
-    
     """
 
     def __init__(self, env_specs, max_action=1, pretrained=False):
