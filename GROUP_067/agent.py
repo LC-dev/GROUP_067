@@ -155,21 +155,23 @@ class Agent(object):
     """Agent class that handles the training of the networks and provides outputs as actions
     """
 
-    def __init__(self, env_specs, max_action=1, pretrained=False):
+    def __init__(self, env_specs, max_action=1, pretrained=False, lr=1e-3):
         self.env_specs = env_specs
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         state_dim = self.env_specs['observation_space'].shape[0]
         action_dim = self.env_specs['action_space'].shape[0]
 
+        self.lr = lr
+
         self.actor = Actor(state_dim, action_dim, max_action).to(self.device)
         self.actor_target = Actor(state_dim, action_dim, max_action).to(self.device)
         self.actor_target.load_state_dict(self.actor.state_dict())
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=1e-3)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=self.lr)
 
         self.critic = Critic(state_dim, action_dim).to(self.device)
         self.critic_target = Critic(state_dim, action_dim).to(self.device)
         self.critic_target.load_state_dict(self.critic.state_dict())
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=1e-3)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.lr)
 
         self.replay_buffer = ReplayBuffer()
         self.max_action = max_action
