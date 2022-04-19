@@ -1,12 +1,12 @@
 import sys
-# import mujoco_py
+import mujoco_py
 import gym
 import time
 import numpy as np
 import argparse
 import importlib
 import random
-# import tensorflow as tf
+import tensorflow as tf
 import os
 from os import listdir, makedirs
 from os.path import isfile, join
@@ -16,7 +16,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import matplotlib.pyplot as plt
-from train_agent import evaluate_agent, get_environment, train_agent
 
 buffer_size=1000000
 batch_size=128  #this can be 128 for more complex tasks such as Hopper
@@ -260,6 +259,73 @@ class Agent():
             target_param.data.copy_(
                 target_param.data * (1.0 - tau) + param.data * tau
             )
+
+def evaluate_agent(agent, env, n_episodes_to_evaluate):
+  '''Evaluates the agent for a provided number of episodes.'''
+  array_of_acc_rewards = []
+  for _ in range(n_episodes_to_evaluate):
+    acc_reward = 0
+    done = False
+    curr_obs = env.reset()
+    while not done:
+      action = agent.act(curr_obs, mode='eval')
+      next_obs, reward, done, _ = env.step(action)
+      acc_reward += reward
+      curr_obs = next_obs
+    array_of_acc_rewards.append(acc_reward)
+  return np.mean(np.array(array_of_acc_rewards))
+
+
+def get_environment(env_type):
+  '''Generates an environment specific to the agent type.'''
+  if 'jellybean' in env_type:
+    env = JellyBeanEnv(gym.make('JBW-COMP579-obj-v1'))
+  elif 'mujoco' in env_type:
+    env = MujocoEnv(gym.make('Hopper-v2'))
+  else:
+    raise Exception("ERROR: Please define your env_type to be either 'jellybean' or 'mujoco'!")
+  return env
+
+
+def train_agent(agent,
+                env,
+                env_eval,
+                total_timesteps,
+                evaluation_freq,
+                n_episodes_to_evaluate):
+
+  seed = 0
+  random.seed(seed)
+  np.random.seed(seed)
+  torch.manual_seed(seed)
+  tf.random.set_seed(seed)
+  env.seed(seed)
+  env_eval.seed(seed)
+  
+  torch.backends.cudnn.deterministic = True
+  torch.backends.cudnn.benchmark = False 
+
+  timestep = 0
+  array_of_mean_acc_rewards = []
+    
+  while timestep < total_timesteps:
+
+    done = False
+    curr_obs = env.reset()
+    while not done:    
+      action = agent.act(curr_obs, mode='train')
+      next_obs, reward, done, _ = env.step(action)
+      agent.update(curr_obs, action, reward, next_obs, done, timestep)
+      curr_obs = next_obs
+        
+      timestep += 1
+      if timestep % evaluation_freq == 0:
+        mean_acc_rewards = evaluate_agent(agent, env_eval, n_episodes_to_evaluate)
+        print('timestep: {ts}, acc_reward: {acr:.2f}'.format(ts=timestep, acr=mean_acc_rewards))
+        array_of_mean_acc_rewards.append(mean_acc_rewards)
+
+  return array_of_mean_acc_rewards
+
 
 if __name__ == '__main__':
     
